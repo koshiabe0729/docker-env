@@ -1,17 +1,24 @@
-# 使用イメージの指定
-FROM php:8.2-fpm
+# ✅ Laravel 6 対応：PHP 7.4 の公式イメージを使用
+FROM php:7.4-fpm
 
-# composer イメージ内から特定のファイルをコピー
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Composer 2.2 は Laravel 6 に最も安定
+COPY --from=composer:2.2 /usr/bin/composer /usr/bin/composer
 
-# コマンドの実行
-# apt-getコマンドのアップデートと必要なライブラリやドライバのインストール
+# 必要なライブラリと PHP 拡張をインストール
 RUN apt-get update && apt-get install -y \
     git \
     zip unzip \
     curl \
-    gnupg \
-    && docker-php-ext-install pdo_mysql
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libonig-dev \
+    libxml2-dev \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
-RUN apt-get install -y nodejs
+# Node.js 14 系（Laravel Mix 用）
+RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - \
+    && apt-get install -y nodejs
+
+# 作業ディレクトリ
+WORKDIR /var/www/html
