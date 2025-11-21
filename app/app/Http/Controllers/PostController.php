@@ -10,27 +10,27 @@ class PostController extends Controller
 {
     // ▼ 投稿一覧（検索機能つき）
     public function index(Request $request)
-    {
-        // キーワードを取得
-        $keyword = $request->input('keyword');
+{
+    // キーワードを取得
+    $keyword = $request->input('keyword');
 
-        // クエリ作成
-        $query = Post::query();
+    // ▼ コメント・ユーザー情報も読み込む（重要）
+    $query = Post::with(['comments.user']);
 
-        // キーワード検索
-        if (!empty($keyword)) {
-            $query->where(function ($q) use ($keyword) {
-                $q->where('title', 'LIKE', "%{$keyword}%")
-                  ->orWhere('content', 'LIKE', "%{$keyword}%");
-            });
-        }
-
-        // 最新順 & ページネーション
-        $posts = $query->latest()->paginate(9);
-
-        // Blade に posts と keyword を渡す
-        return view('home', compact('posts', 'keyword'));
+    // キーワード検索
+    if (!empty($keyword)) {
+        $query->where(function ($q) use ($keyword) {
+            $q->where('title', 'LIKE', "%{$keyword}%")
+              ->orWhere('content', 'LIKE', "%{$keyword}%");
+        });
     }
+
+    // 最新順 & ページネーション
+    $posts = $query->latest()->paginate(9);
+
+    return view('home', compact('posts', 'keyword'));
+}
+
 
 
     // ▼ 投稿フォーム表示
