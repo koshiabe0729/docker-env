@@ -5,100 +5,43 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Post;
-use Illuminate\Support\Facades\Auth;
 
 class PostController extends Controller
 {
     /**
-     * 管理者：投稿一覧
+     * 管理者：投稿一覧（検索対応）
      */
-    public function index()
+    public function index(Request $request)
     {
-        $posts = Post::latest()->paginate(20);
-        return view('admin.posts.index', compact('posts'));
-    }
+        $keyword = $request->input('keyword');
 
-    /**
-     * 管理者：新規投稿作成フォーム
-     */
-    public function create()
-    {
-        return view('admin.posts.create');
-    }
+        $query = Post::with('user')->orderBy('created_at', 'desc');
 
-    /**
-     * 管理者：投稿保存
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'title'   => 'required|max:100',
-            'content' => 'required',
-            'image'   => 'image|nullable'
-        ]);
-
-        // 画像保存
-        $path = null;
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('post_images', 'public');
+        if (!empty($keyword)) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('title', 'LIKE', "%{$keyword}%")
+                  ->orWhere('content', 'LIKE', "%{$keyword}%")
+                  ->orWhereHas('user', function ($uq) use ($keyword) {
+                      $uq->where('name', 'LIKE', "%{$keyword}%");
+                  });
+            });
         }
 
-        Post::create([
-            'user_id'    => Auth::id(),    // 管理者のID
-            'title'      => $request->title,
-            'content'    => $request->content,
-            'image_path' => $path,
-            'is_hidden'  => 0,
-        ]);
+        $posts = $query->paginate(20);
 
-        return redirect()->route('posts.index')
-                         ->with('success', '投稿を作成しました！');
+        return view('admin.posts.index', compact('posts', 'keyword'));
     }
+
 
     /**
      * 管理者：投稿詳細
      */
     public function show($id)
     {
-        $post = Post::findOrFail($id);
+        $post = Post::with('user')->findOrFail($id);
         return view('admin.posts.show', compact('post'));
     }
 
-    /**
-     * 管理者：編集フォーム
-     */
-    public function edit($id)
-    {
-        $post = Post::findOrFail($id);
-        return view('admin.posts.edit', compact('post'));
-    }
-
-    /**
-     * 管理者：投稿更新
-     */
-    public function update(Request $request, $id)
-    {
-        $post = Post::findOrFail($id);
-
-        $request->validate([
-            'title'   => 'required|max:100',
-            'content' => 'required',
-            'image'   => 'image|nullable'
-        ]);
-
-        // 画像差し替え
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('post_images', 'public');
-            $post->image_path = $path;
-        }
-
-        $post->title   = $request->title;
-        $post->content = $request->content;
-        $post->save();
-
-        return redirect()->route('posts.index')
-                         ->with('success', '投稿を更新しました！');
-    }
 
     /**
      * 管理者：投稿削除
@@ -107,7 +50,25 @@ class PostController extends Controller
     {
         Post::findOrFail($id)->delete();
 
-        return redirect()->route('posts.index')
-                         ->with('success', '投稿を削除しました！');
+        return redirect()
+            ->route('admin.posts.index')
+            ->with('success', '投稿を削除しました。');
+    }
+
+
+    /**
+     * 管理者：表示 / 非表示 切り替え
+     */
+    public function toggleHidden($id)
+    {
+        $post = Post::findOrFail($id);
+
+        // 0 → 1, 1 → 0 に反転
+        $post->is_hidden = $post->is_hidden ? 0 : 1;
+        $post->save();
+
+        return redirect()
+            ->route('admin.posts.index')
+            ->with('success', '投稿の表示状態を変更しました。');
     }
 }

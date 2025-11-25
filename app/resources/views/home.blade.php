@@ -3,6 +3,7 @@
 @section('content')
 <div class="container">
 
+    {{-- フラッシュメッセージ --}}
     @if (session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
@@ -11,6 +12,7 @@
 
         <h3>投稿一覧</h3>
 
+        {{-- 上部メニュー --}}
         <div class="d-flex">
 
             {{-- マイページ --}}
@@ -26,31 +28,36 @@
             {{-- 退会 --}}
             <form action="{{ route('mypage.delete') }}"
                   method="POST"
-                  onsubmit="return confirm('本当に退会しますか？\nすべてのデータが削除されます。');">
+                  onsubmit="return confirm('本当に退会しますか？');">
                 @csrf
                 @method('DELETE')
                 <button class="btn btn-danger">退会</button>
             </form>
-
         </div>
     </div>
 
-    {{-- 検索 --}}
+    {{-- キーワード検索 --}}
     <form action="{{ route('home') }}" method="GET" class="mb-4">
         <div class="input-group">
-            <input type="text" name="keyword" class="form-control" placeholder="キーワード検索" value="{{ request('keyword') }}">
+            <input type="text"
+                   name="keyword"
+                   class="form-control"
+                   placeholder="キーワード検索"
+                   value="{{ request('keyword') }}">
             <div class="input-group-append">
                 <button class="btn btn-outline-secondary">検索</button>
             </div>
         </div>
     </form>
 
-    {{-- ▼ 投稿一覧 --}}
+    {{-- 投稿一覧（公開投稿のみ） --}}
     <div class="row">
         @foreach ($posts as $post)
             <div class="col-md-4 mb-4">
+
                 <div class="card h-100">
 
+                    {{-- 投稿画像 --}}
                     @if ($post->image_path)
                         <img src="{{ asset('storage/' . $post->image_path) }}"
                              class="card-img-top"
@@ -61,9 +68,11 @@
                     @endif
 
                     <div class="card-body">
+
                         <h5>{{ $post->title }}</h5>
                         <p>{{ Str::limit($post->content, 80) }}</p>
 
+                        {{-- 詳細 --}}
                         <a href="{{ route('posts.show', $post->id) }}"
                            class="btn btn-primary btn-sm">詳細</a>
 
@@ -72,7 +81,7 @@
                         {{-- コメント一覧 --}}
                         <h6>コメント（{{ $post->comments->count() }}件）</h6>
 
-                        @forelse($post->comments as $comment)
+                        @forelse ($post->comments as $comment)
                             <div class="border rounded p-2 mb-2 bg-light">
                                 <strong>{{ $comment->user->name }}</strong><br>
                                 {{ $comment->comment_text }}
@@ -81,8 +90,10 @@
                             <p class="text-muted">コメントなし</p>
                         @endforelse
 
-                        {{-- コメント投稿 --}}
-                        <form action="{{ route('comment.store') }}" method="POST" class="mt-2">
+                        {{-- コメント投稿フォーム --}}
+                        <form action="{{ route('comment.store') }}"
+                              method="POST"
+                              class="mt-2">
                             @csrf
                             <input type="hidden" name="post_id" value="{{ $post->id }}">
 
@@ -99,10 +110,12 @@
                     </div>
 
                 </div>
+
             </div>
         @endforeach
     </div>
 
+    {{-- ページネーション --}}
     <div class="mt-3">
         {{ $posts->links() }}
     </div>

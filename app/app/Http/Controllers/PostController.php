@@ -8,29 +8,29 @@ use App\Post;
 
 class PostController extends Controller
 {
-    // ▼ 投稿一覧（検索機能つき）
+    // ▼ 投稿一覧（公開投稿のみ & 検索対応 完全版）
     public function index(Request $request)
-{
-    // キーワードを取得
-    $keyword = $request->input('keyword');
+    {
+        // キーワード取得
+        $keyword = $request->input('keyword');
 
-    // ▼ コメント・ユーザー情報も読み込む（重要）
-    $query = Post::with(['comments.user']);
+        // 公開投稿のみ（is_hidden = 0）
+        $query = Post::where('is_hidden', 0)
+            ->with(['comments.user']);
 
-    // キーワード検索
-    if (!empty($keyword)) {
-        $query->where(function ($q) use ($keyword) {
-            $q->where('title', 'LIKE', "%{$keyword}%")
-              ->orWhere('content', 'LIKE', "%{$keyword}%");
-        });
+        // キーワード検索
+        if (!empty($keyword)) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('title', 'LIKE', "%{$keyword}%")
+                  ->orWhere('content', 'LIKE', "%{$keyword}%");
+            });
+        }
+
+        // 新着順 9 件ずつ
+        $posts = $query->latest()->paginate(9);
+
+        return view('home', compact('posts', 'keyword'));
     }
-
-    // 最新順 & ページネーション
-    $posts = $query->latest()->paginate(9);
-
-    return view('home', compact('posts', 'keyword'));
-}
-
 
 
     // ▼ 投稿フォーム表示
@@ -49,13 +49,11 @@ class PostController extends Controller
             'image'   => 'image|nullable',
         ]);
 
-        // 画像がある場合は保存
         $path = null;
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('post_images', 'public');
         }
 
-        // データ保存
         Post::create([
             'user_id'    => Auth::id(),
             'title'      => $request->title,
@@ -73,6 +71,12 @@ class PostController extends Controller
     public function show($id)
     {
         $post = Post::findOrFail($id);
+
+        // 公開投稿のみ閲覧可
+        if ($post->is_hidden == 1 && $post->user_id !== Auth::id()) {
+            abort(403, 'この投稿は非公開です');
+        }
+
         return view('posts.show', compact('post'));
     }
 
@@ -105,13 +109,11 @@ class PostController extends Controller
             'image'   => 'image|nullable',
         ]);
 
-        // 画像差し替え
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('post_images', 'public');
             $post->image_path = $path;
         }
 
-        // 内容更新
         $post->title   = $request->title;
         $post->content = $request->content;
 

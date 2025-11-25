@@ -74,4 +74,9 @@ class User extends Authenticatable
         }
         return 'https://via.placeholder.com/100';
     }
+        public function isAdmin()
+    {
+        return $this->role === 1;
+    }
+
 }
